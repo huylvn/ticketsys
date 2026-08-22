@@ -4,7 +4,7 @@ CREATE DATABASE IF NOT EXISTS vetautet
 
 -- 1. ticket table
 CREATE TABLE IF NOT EXISTS `vetautet`.`ticket` (
-                                                   `id` BIGINT(20)  NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
+    `id` BIGINT(20)  NOT NULL AUTO_INCREMENT COMMENT 'Primary key',
     `name` VARCHAR(50) NOT NULL COMMENT 'ticket name',
     `desc` TEXT COMMENT 'ticket description',
     `start_time` DATETIME NOT NULL COMMENT 'ticket sale start time',

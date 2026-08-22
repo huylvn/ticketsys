@@ -46,7 +46,7 @@ public class TicketDetailCacheService {
         ticketDetail = ticketDetailDomainService.getTicketDetailById(id);
 //        log.info("FROM DBS {}, {}, {}", id, version, ticketDetail);
 
-        // 5. check ticketitem
+        // 5. check ticker item
         if (ticketDetail != null) { // Nói sau khi code xong: Code nay co van de -> Gia su ticketItem lay ra tu dbs null thi sao, query mãi
             // 6. set cache
             redisInfrasService.setObject(genEventItemKey(id), ticketDetail);
