@@ -1,0 +1,18 @@
+{
+	"ulid": "01M1VJFPATXQ0T4R670SN4FR88",
+	"minTime": 1788661164043,
+	"maxTime": 1788667200000,
+	"stats": {
+		"numSamples": 1507206,
+		"numFloatSamples": 1507206,
+		"numSeries": 4046,
+		"numChunks": 16571
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01M1VJFPATXQ0T4R670SN4FR88"
+		]
+	},
+	"version": 1
+}

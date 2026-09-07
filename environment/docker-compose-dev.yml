@@ -1,64 +1,90 @@
-
 networks:
   pre-event-network:
     driver: bridge
 
+
 services:
+
   mysql:
     image: mysql:8.0
     container_name: pre-event-mysql
+
     volumes:
-      - ./data/db_data:/var/lib/mysql
-      - ./mysql/init:/docker-entrypoint-initdb.d/ # nếu bạn không phải devops vui lòng contact anonystick. tks
-    command: [
-      '--character-set-server=utf8mb4',
-      '--collation-server=utf8mb4_unicode_ci',
-      '--skip-character-set-client-handshake'  # Buộc tất cả kết nối sử dụng utf8mb4
-    ]
+      # Docker managed volume - tránh lỗi permission/chown
+      - mysql_data:/var/lib/mysql
+
+      # SQL init
+      - ./mysql/init:/docker-entrypoint-initdb.d/
+
+    command:
+      [
+        '--character-set-server=utf8mb4',
+        '--collation-server=utf8mb4_unicode_ci',
+        '--skip-character-set-client-handshake'
+      ]
+
     environment:
       MYSQL_ROOT_PASSWORD: root1234
       MYSQL_ROOT_HOST: "%"
       MYSQL_DATABASE: ticket
       MYSQL_PASSWORD: root1234
+
     ports:
       - "3316:3306"
+
     networks:
       - pre-event-network
 
-  #Redis
+    restart: unless-stopped
+
+
+  # Redis
   redis:
     container_name: pre-event-redis
     image: redislabs/redismod:latest
+
     ports:
       - "6319:6379"
+
     networks:
       - pre-event-network
+
+    restart: unless-stopped
 
 
   prometheus:
     image: prom/prometheus:latest
     container_name: pre-event-prometheus
+
     restart: unless-stopped
+
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./data/prometheus_data:/prometheus
+
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
+
     extra_hosts:
       - host.docker.internal:host-gateway
+
     ports:
       - "9090:9090"
+
     networks:
       - pre-event-network
+
 
   grafana:
     image: grafana/grafana
     container_name: pre-event-grafana
+
     hostname: grafana
+
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
@@ -68,32 +94,45 @@ services:
 
     volumes:
       - ./grafana-storage:/var/lib/grafana
+
     ports:
       - "3000:3000"
+
     networks:
       - pre-event-network
+
+    restart: unless-stopped
+
 
   node-exporter:
     image: prom/node-exporter:latest
     container_name: pre-event-node-exporter
+
     restart: unless-stopped
+
     volumes:
-      - /proc:/host/proc:co
+      - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+
     command:
       - --path.procfs=/host/proc
       - --path.rootfs=/rootfs
       - --path.sysfs=/host/sys
       - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)
+
     ports:
       - "9100:9100"
+
     networks:
       - pre-event-network
 
+
   mysqld-exporter:
     image: quay.io/prometheus/mysqld-exporter
+
     container_name: mysqld-exporter
+
     command:
       - '--collect.engine_innodb_status'
       - '--collect.info_schema.processlist'
@@ -103,70 +142,107 @@ services:
       - '--collect.perf_schema.eventsstatements'
       - '--collect.perf_schema.indexiowaits'
       - '--collect.global_status'
-      #- '--ignore-tables'
       - '--config.my-cnf=/etc/mysql/.my.cnf'
+
     volumes:
       - ./mysqld-exporter/.my.cnf:/etc/mysql/.my.cnf
+
     environment:
-      - DATA_SOURCE_NAME=exporter:exporter@(mysqld:3316)/
+      # sửa hostname + port nội bộ docker
+      - DATA_SOURCE_NAME=exporter:exporter@(mysql:3306)/
+
     ports:
       - "9104:9104"
+
     networks:
       - pre-event-network
+
     depends_on:
       - mysql
 
+
   redis-exporter:
     image: oliver006/redis_exporter
+
     container_name: redis-exporter
+
     environment:
       REDIS_ADDR: "redis://redis:6379"
+
     ports:
       - "9121:9121"
+
     networks:
       - pre-event-network
+
     depends_on:
       - redis
 
+
   elasticsearch:
     image: elasticsearch:7.17.25
+
     container_name: pre-event-elasticsearch
+
     volumes:
       - ./elk/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+
     environment:
       ES_JAVA_OPTS: "-Xmx256m -Xms256m"
       discovery.type: single-node
+
     ports:
       - "9200:9200"
+
     networks:
       - pre-event-network
 
+
   logstash:
     image: logstash:7.17.25
+
     container_name: pre-event-logstash
+
     volumes:
       - ./elk/logstash.yml:/usr/share/logstash/config/logstash.yml
       - ./elk/pipeline:/usr/share/logstash/pipeline
+
     ports:
       - "5044:5044"
       - "5033:5000/tcp"
       - "5022:5000/udp"
       - "9600:9600"
+
     environment:
       LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+
     networks:
       - pre-event-network
+
     depends_on:
       - elasticsearch
 
+
   kibana:
     image: kibana:7.17.25
+
     container_name: pre-event-kibana
+
     volumes:
       - ./elk/kibana.yml:/usr/share/kibana/config/kibana.yml
+
     ports:
       - "5601:5601"
+
     networks:
       - pre-event-network
+
     depends_on:
       - elasticsearch
+
+
+
+# Docker named volumes
+volumes:
+
+  mysql_data:
